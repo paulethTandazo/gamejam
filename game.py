@@ -1,339 +1,191 @@
 import pygame
-
 import sys
-
 import random
- 
+from typing import Callable, Iterator
+
 # Inicializar Pygame
-
 pygame.init()
- 
+
 # Definir dimensiones de la ventana
-
-ancho = 1024
-
-alto = 768
-
+ancho = 600
+alto = 500
 size = (ancho, alto)
- 
+
 # Crear la ventana
-
 pygame.display.set_caption("mi primer juego")
-
 screen = pygame.display.set_mode(size)
- 
+
 # Definir colores
-
 blanco = (255, 255, 255)
-
 negro = (0, 0, 0)
-
 gris_oscuro = (64, 64, 64)
-
 gris_claro = (192, 192, 192)
- 
-# Fuente para el texto de la historia y el inventario
 
-fuente = pygame.font.Font(None, 40)
- 
+# Fuente para el texto de la historia y botones
+fuente = pygame.font.Font(None, 24)  # Fuente más pequeña
+
 # Definir la historia y las imágenes correspondientes (JPG)
-
 historia = [
-
-    "Era una noche oscura y tormentosa...",
-
-    "El joven héroe, cansado pero decidido, se levantó.",
-
-    "Sabía que su misión no sería fácil, pero estaba listo.",
-
-    "A lo lejos, una sombra se movía entre los árboles...",
-
-    "¿Sería un amigo o un enemigo? Solo el tiempo lo diría."
-
+    "El mundo que una vez estuvo lleno de vida ahora es una sombra de lo que fue...",
+    "En su interminable caminar por el mundo destruido, el chico se detiene...",
+    "Con la semilla en sus manos, el chico siente una nueva responsabilidad...",
+    "De rodillas en el suelo de su humilde hogar, el chico cava cuidadosamente...",
+    "Han pasado seis meses desde que el chico encontró y plantó la semilla..."
 ]
- 
+
 # Cargar las imágenes de la historia (formato JPG)
-
 imagenes_historia = [
-
-    pygame.image.load("imagen1.jpg"),
-
-    pygame.image.load("imagen2.jpg"),
-
-    pygame.image.load("imagen3.jpg"),
-
-    pygame.image.load("imagen4.jpg"),
-
-    pygame.image.load("imagen5.jpg")
-
+    pygame.image.load("gamejam/PantallaInicio.jpg"),
+    pygame.image.load("gamejam/ChicoConPlantita.jpg"),
+    pygame.image.load("gamejam/LlegandoCasa.jpg"),
+    pygame.image.load("gamejam/PlantandoPlanta.jpg"),
+    pygame.image.load("gamejam/6meses.jpg")
 ]
- 
+
 # Redimensionar las imágenes para que se ajusten a la ventana (parte superior)
-
 imagenes_historia = [pygame.transform.scale(img, (ancho, alto // 2)) for img in imagenes_historia]
- 
-# Variables de control
 
+# Cargar la imagen de fondo para la pantalla de inicio
+fondo_inicio = pygame.image.load("gamejam/background.png")
+fondo_inicio = pygame.transform.scale(fondo_inicio, size)  # Ajustar la imagen al tamaño de la ventana
+
+# Variables de control de la historia
 indice_historia = 0
-
 texto_actual = ""  # Texto que se va escribiendo
-
 escribiendo = True  # Controla si estamos escribiendo la historia
-
 contador_letra = 0  # Contador de letras para mostrar una a una
 
-en_historia = True  # Variable para controlar las escenas (historia/aventura)
- 
-# Botón para cambiar de imagen y texto
+# Estado del juego (inicio o historia)
+en_historia = False  # Comienza en la pantalla de inicio
+en_pantalla_inicio = True  # Variable para la pantalla de inicio
 
+# Botón para cambiar de imagen y texto en la historia
 ancho_boton = 300
-
 alto_boton = 50
+x_boton = (ancho - ancho_boton) // 2  # Centrado horizontalmente
 
-x_boton = (ancho - ancho_boton) // 2
+# Posición del botón "Start" en la parte inferior
+y_boton_start = alto - alto_boton - 30  # Posicionado cerca del borde inferior
 
+# Definir `y_boton` para la historia (justo por encima del borde inferior)
 y_boton = alto - alto_boton - 30
- 
-fuente_boton = pygame.font.Font(None, 40)
 
+fuente_boton = pygame.font.Font(None, 24)  # Fuente para los botones
 texto_boton = "Siguiente"
-
 color_texto = blanco
-
 color_boton = gris_oscuro
- 
-# Tamaño del tablero
 
-filas = 8
+# Botón "Start" para la pantalla de inicio
+texto_boton_start = "Start"
 
-columnas = 8
+# Función para ajustar el texto dentro de un área específica
+def layout_text_in_area(text: str, font_width: Callable[[str], int], width: int) -> Iterator[str]:
+    if len(text) == 0:
+        yield ""
+        return
 
-tamaño_cuadro = ancho // columnas  # Tamaño de cada cuadro del tablero
- 
-# Posición inicial del "personaje"
-
-pos_x = 0
-
-pos_y = 0
-
-velocidad = tamaño_cuadro  # El personaje se moverá un cuadro a la vez
- 
-# Cargar la imagen del personaje (formato PNG)
-
-personaje_img = pygame.image.load("personaje.png")
-
-personaje_img = pygame.transform.scale(personaje_img, (tamaño_cuadro, tamaño_cuadro))  # Ajustar al tamaño del cuadro
- 
-# Cargar la imagen del objeto (formato PNG)
-
-objeto_img = pygame.image.load("objeto.png")
-
-objeto_img = pygame.transform.scale(objeto_img, (tamaño_cuadro, tamaño_cuadro))  # Ajustar al tamaño del cuadro
- 
-# Generar posiciones aleatorias para los objetos
-
-num_objetos = 5
-
-objetos = [(random.randint(0, columnas-1) * tamaño_cuadro, random.randint(0, filas-1) * tamaño_cuadro) for _ in range(num_objetos)]
- 
-# Contador de objetos en el inventario
-
-contador_objetos = 0
- 
-# Función para escribir el texto gradualmente
-
-def escribir_texto(texto, velocidad):
-
-    global contador_letra, texto_actual
-
-    if contador_letra < len(texto):
-
-        texto_actual += texto[contador_letra]
-
-        contador_letra += 1
- 
-# Función para dibujar el tablero de ajedrez
-
-def dibujar_tablero():
-
-    for fila in range(filas):
-
-        for columna in range(columnas):
-
-            # Alternar entre gris claro y gris oscuro
-
-            if (fila + columna) % 2 == 0:
-
-                color = gris_claro
-
+    start = 0
+    end = 0
+    while True:
+        if end >= len(text):
+            yield text[start:]
+            return
+        substr = text[start:end + 1]
+        overflow = font_width(substr)[0] > width  # Tomar solo el ancho
+        if overflow:
+            if text[end] == ' ':
+                yield text[start:end]
+                start = end
             else:
-
-                color = gris_oscuro
-
-            # Dibujar el cuadrado
-
-            pygame.draw.rect(screen, color, pygame.Rect(columna * tamaño_cuadro, fila * tamaño_cuadro, tamaño_cuadro, tamaño_cuadro))
- 
-# Función para dibujar el "personaje"
-
-def dibujar_personaje():
-
-    # Dibujar la imagen del personaje (PNG) en su posición actual
-
-    screen.blit(personaje_img, (pos_x, pos_y))
- 
-# Función para dibujar los objetos en el tablero
-
-def dibujar_objetos():
-
-    for objeto in objetos:
-
-        screen.blit(objeto_img, objeto)
- 
-# Función para comprobar si el personaje ha recogido un objeto
-
-def recoger_objetos():
-
-    global contador_objetos, objetos
-
-    for objeto in objetos:
-
-        if pos_x == objeto[0] and pos_y == objeto[1]:
-
-            objetos.remove(objeto)  # Eliminar el objeto del tablero
-
-            contador_objetos += 1  # Incrementar el inventario
-
-            # Generar un nuevo objeto en una posición aleatoria
-
-            nuevo_objeto = (random.randint(0, columnas-1) * tamaño_cuadro, random.randint(0, filas-1) * tamaño_cuadro)
-
-            objetos.append(nuevo_objeto)
- 
-# Bucle principal
-
-while True:
-
-    # Manejar eventos
-
-    for evento in pygame.event.get():
-
-        if evento.type == pygame.QUIT:
-
-            pygame.quit()
-
-            sys.exit()
- 
-        # Detectar clic en el botón para avanzar en la historia o cambiar de escena
-
-        if evento.type == pygame.MOUSEBUTTONDOWN and en_historia:
-
-            if x_boton <= evento.pos[0] <= x_boton + ancho_boton and y_boton <= evento.pos[1] <= y_boton + alto_boton:
-
-                if indice_historia < len(historia) - 1:
-
-                    indice_historia += 1
-
-                    texto_actual = ""  # Reiniciar el texto actual
-
-                    contador_letra = 0  # Reiniciar el contador de letras
-
-                    escribiendo = True  # Volver a escribir la siguiente parte
-
-                else:
-
-                    en_historia = False  # Cambiar a la escena del tablero
- 
-        # Detectar el movimiento del personaje por teclado (arriba, abajo, izquierda, derecha)
-
-        if evento.type == pygame.KEYDOWN and not en_historia:
-
-            if evento.key == pygame.K_LEFT:
-
-                pos_x = max(0, pos_x - velocidad)  # No salir del tablero
-
-            if evento.key == pygame.K_RIGHT:
-
-                pos_x = min(ancho - tamaño_cuadro, pos_x + velocidad)
-
-            if evento.key == pygame.K_UP:
-
-                pos_y = max(0, pos_y - velocidad)
-
-            if evento.key == pygame.K_DOWN:
-
-                pos_y = min(alto - tamaño_cuadro, pos_y + velocidad)
- 
-    # Escena de la historia
-
-    if en_historia:
-
-        # Mostrar la imagen correspondiente en la parte superior
-
-        screen.blit(imagenes_historia[indice_historia], (0, 0))
- 
-        # Dibujar el cuadro de texto en la parte inferior
-
-        pygame.draw.rect(screen, negro, (0, alto // 2, ancho, alto // 2))
- 
-        # Escribir el texto progresivamente
-
-        if escribiendo:
-
-            escribir_texto(historia[indice_historia], velocidad=2)  # Velocidad de escritura
- 
-        # Dibujar el texto en pantalla
-
-        texto_renderizado = fuente.render(texto_actual, True, blanco)
-
-        screen.blit(texto_renderizado, (50, alto // 2 + 50))
- 
-        # Cambiar el texto del botón a "Comienza tu aventura" si es la última parte de la historia
-
-        if indice_historia == len(historia) - 1:
-
-            texto_boton = "Comienza tu aventura"
-
+                found = False
+                for i in range(end - 1, start, -1):
+                    if text[i] == ' ':
+                        yield text[start:i + 1]
+                        start = end = i + 1
+                        found = True
+                        break
+                if not found:
+                    yield text[start:end]
+                    start = end
         else:
+            end += 1
 
+# Función para escribir el texto gradualmente (letra por letra)
+def escribir_texto_progresivamente(historia_completa, velocidad):
+    global contador_letra, texto_actual
+    if contador_letra < len(historia_completa):
+        texto_actual += historia_completa[contador_letra]
+        contador_letra += 1
+
+# Función para dibujar el texto en el área inferior
+def dibujar_texto_area(texto, area_ancho):
+    lineas = layout_text_in_area(texto, fuente.size, area_ancho)
+    y_pos = alto // 2 + 20  # Posición Y inicial para el texto
+    for linea in lineas:
+        texto_renderizado = fuente.render(linea, True, blanco)
+        screen.blit(texto_renderizado, (20, y_pos))  # Posición del texto
+        y_pos += 30  # Ajustar la distancia entre las líneas (más pequeño)
+
+# Bucle principal
+while True:
+    for evento in pygame.event.get():
+        if evento.type == pygame.QUIT:
+            pygame.quit()
+            sys.exit()
+
+        # Detectar clic en el botón de la pantalla de inicio o la historia
+        if evento.type == pygame.MOUSEBUTTONDOWN:
+            if en_pantalla_inicio:
+                # Detectar clic en el botón "Start" en la pantalla de inicio
+                if x_boton <= evento.pos[0] <= x_boton + ancho_boton and y_boton_start <= evento.pos[1] <= y_boton_start + alto_boton:
+                    en_pantalla_inicio = False  # Cambiar a la escena de la historia
+                    en_historia = True
+            elif en_historia:
+                # Detectar clic en el botón de la historia
+                if x_boton <= evento.pos[0] <= x_boton + ancho_boton and y_boton <= evento.pos[1] <= y_boton + alto_boton:
+                    if indice_historia < len(historia) - 1:
+                        indice_historia += 1
+                        texto_actual = ""  # Reiniciar el texto actual
+                        contador_letra = 0  # Reiniciar el contador de letras
+                        escribiendo = True  # Volver a escribir la siguiente parte
+                    else:
+                        en_historia = False  # Fin de la historia
+
+    # Escena de la pantalla de inicio
+    if en_pantalla_inicio:
+        # Mostrar la imagen de fondo en lugar del fondo negro
+        screen.blit(fondo_inicio, (0, 0))  # Mostrar la imagen de fondo de inicio
+
+        # Dibujar el botón "Start"
+        pygame.draw.rect(screen, color_boton, (x_boton, y_boton_start, ancho_boton, alto_boton))
+        texto_boton_renderizado = fuente_boton.render(texto_boton_start, True, color_texto)
+        screen.blit(texto_boton_renderizado, (x_boton + 100, y_boton_start + 15))
+
+    # Escena de la historia
+    elif en_historia:
+        # Mostrar la imagen correspondiente en la parte superior
+        screen.blit(imagenes_historia[indice_historia], (0, 0))
+
+        # Dibujar el cuadro de texto en la parte inferior
+        pygame.draw.rect(screen, negro, (0, alto // 2, ancho, alto // 2))
+
+        # Escribir el texto progresivamente
+        if escribiendo:
+            escribir_texto_progresivamente(historia[indice_historia], velocidad=2)
+
+        # Dibujar el texto ajustado en pantalla
+        dibujar_texto_area(texto_actual, ancho - 40)  # Ajustar el texto dentro de un área más pequeña
+
+        # Cambiar el texto del botón a "Comienza tu aventura" si es la última parte de la historia
+        if indice_historia == len(historia) - 1:
+            texto_boton = "Comienza tu aventura"
+        else:
             texto_boton = "Siguiente"
- 
+
         # Dibujar el botón
-
         pygame.draw.rect(screen, color_boton, (x_boton, y_boton, ancho_boton, alto_boton))
-
         texto_boton_renderizado = fuente_boton.render(texto_boton, True, color_texto)
-
         screen.blit(texto_boton_renderizado, (x_boton + 20, y_boton + 10))
- 
-    # Escena de la aventura (tablero con movimiento del personaje)
 
-    else:
-
-        # Dibujar el tablero de ajedrez
-
-        dibujar_tablero()
- 
-        # Dibujar el "personaje" (imagen PNG)
-
-        dibujar_personaje()
- 
-        # Dibujar los objetos en el tablero
-
-        dibujar_objetos()
- 
-        # Comprobar si el personaje ha recogido algún objeto
-
-        recoger_objetos()
- 
-        # Mostrar el contador de objetos recogidos en la pantalla
-
-        texto_inventario = fuente.render(f"Objetos en inventario: {contador_objetos}", True, blanco)
-
-        screen.blit(texto_inventario, (50, alto - 50))
- 
     # Actualizar la pantalla
-
     pygame.display.update()
-
- 
